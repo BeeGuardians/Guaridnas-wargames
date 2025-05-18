@@ -22,19 +22,36 @@ jobs:
           if git rev-parse HEAD~1 >/dev/null 2>&1; then
             PREV_COMMIT=$(git rev-parse HEAD~1)
             CUR_COMMIT=$(git rev-parse HEAD)
-            CHANGED=$(git diff --name-only "$PREV_COMMIT" "$CUR_COMMIT" | awk -F/ '{print $1}' | sort -u)
+            RAW=$(git diff --name-only "$PREV_COMMIT" "$CUR_COMMIT")
           else
             echo "⚠️ No previous commit. Using HEAD only."
-            CHANGED=$(git show --pretty="" --name-only HEAD | awk -F/ '{print $1}' | sort -u)
+            RAW=$(git show --pretty="" --name-only HEAD)
           fi
+
+          CHANGED=$(echo "$RAW" | awk -F/ '{print $1}' | sort -u)
 
           echo "📦 Changed folders raw:"
           echo "$CHANGED"
 
-          if [ -z "$CHANGED" ]; then
+          # 제외할 항목 목록
+          EXCLUDED=".github .gitignore README.md LICENSE README README.md~"
+
+          FILTERED=""
+          for folder in $CHANGED; do
+            if ! echo "$EXCLUDED" | grep -qw "$folder"; then
+              FILTERED="$FILTERED $folder"
+            fi
+          done
+
+          FILTERED=$(echo "$FILTERED" | xargs -n1 | sort -u)
+
+          echo "✅ Filtered challenge folders:"
+          echo "$FILTERED"
+
+          if [ -z "$FILTERED" ]; then
             echo 'folders=[]' | tee -a "$GITHUB_OUTPUT"
           else
-            JSON_ARRAY=$(echo "$CHANGED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            JSON_ARRAY=$(echo "$FILTERED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
             echo "folders=$JSON_ARRAY" | tee -a "$GITHUB_OUTPUT"
           fi
 
@@ -59,7 +76,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Public ECR 고정 리전
+          aws-region: us-east-1
 
       - name: Login to Amazon Public ECR
         run: |
