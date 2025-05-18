@@ -3,7 +3,7 @@ name: Deploy CTF Problems
 on:
   push:
     paths:
-      - '*/*'  # 최상위 문제 디렉토리 내부 파일이 변경되었을 때 실행
+      - '*/*'
 
 jobs:
   detect-changes:
@@ -29,13 +29,15 @@ jobs:
             CHANGED=$(git diff --name-only "$PREV_COMMIT" "$CUR_COMMIT" | awk -F/ '{print $1}' | sort -u)
           fi
 
-          if [ -z "$CHANGED" ]; then
-            echo "folders=[]" >> $GITHUB_OUTPUT
-          else
-            echo "folders=$(echo $CHANGED | sed 's/ /","/g; s/^/["/; s/$/"]/')" >> $GITHUB_OUTPUT
-          fi
+          echo "📦 Changed folders raw:"
+          echo "$CHANGED"
 
-          echo "📦 Changed folders: $CHANGED"
+          if [ -z "$CHANGED" ]; then
+            echo 'folders=[]' >> $GITHUB_OUTPUT
+          else
+            FOLDERS_JSON=$(echo "$CHANGED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "folders=$FOLDERS_JSON" >> $GITHUB_OUTPUT
+          fi
 
   deploy:
     needs: detect-changes
@@ -46,31 +48,4 @@ jobs:
         folder: ${{ fromJson(needs.detect-changes.outputs.folders) }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # public ECR 전용
-
-      - name: Login to Amazon Public ECR
-        run: |
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
-
-      - name: Build and push Docker image to ECR
-        run: |
-          IMAGE_NAME=public.ecr.aws/i7t0x0a1/gaurdians/wargames
-          IMAGE_TAG=${{ matrix.folder }}
-
-          echo "🚧 Building image $IMAGE_NAME:$IMAGE_TAG"
-          docker build -t $IMAGE_NAME:$IMAGE_TAG ./${{ matrix.folder }}
-          docker push $IMAGE_NAME:$IMAGE_TAG
-
-      - name: Upload challenge files to S3 (excluding flag.txt and info.txt)
-        run: |
-          for file in $(find "${{ matrix.folder }}" -type f ! -name 'flag.txt' ! -name 'info.txt'); do
-            aws s3 cp "$file" "s3://s3-guardians-dev/wargame_files/${{ matrix.folder }}/$(basename "$file")"
-          done
+      - name: Checkout
