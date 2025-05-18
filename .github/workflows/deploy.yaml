@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Detect changed folders
+      - name: Detect changed top-level folders
         id: detect
         run: |
           echo "🔍 Detecting changed top-level folders..."
@@ -29,16 +29,18 @@ jobs:
             CHANGED=$(git diff --name-only "$PREV_COMMIT" "$CUR_COMMIT" | awk -F/ '{print $1}' | sort -u)
           fi
 
-          echo "CHANGED FOLDERS RAW:"
+          echo "📦 Changed folders raw:"
           echo "$CHANGED"
 
           if [ -z "$CHANGED" ]; then
             echo 'folders=[]' >> "$GITHUB_OUTPUT"
           else
-            # Convert to JSON array
             JSON_ARRAY=$(echo "$CHANGED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
             echo "folders=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Show detected folders (for debug)
+        run: echo "Folders from previous step: ${{ steps.detect.outputs.folders }}"
 
   deploy:
     needs: detect-changes
@@ -57,7 +59,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-east-1  # Public ECR은 us-east-1 고정
 
       - name: Login to Amazon Public ECR
         run: |
@@ -68,6 +70,7 @@ jobs:
           IMAGE_NAME=public.ecr.aws/i7t0x0a1/gaurdians/wargames
           IMAGE_TAG=${{ matrix.folder }}
 
+          echo "🚧 Building image $IMAGE_NAME:$IMAGE_TAG"
           docker build -t $IMAGE_NAME:$IMAGE_TAG ./${{ matrix.folder }}
           docker push $IMAGE_NAME:$IMAGE_TAG
 
