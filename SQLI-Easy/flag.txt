@@ -1,0 +1,1 @@
+FLAG{sqli_1nject_3z_mode}
