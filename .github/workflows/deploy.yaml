@@ -3,7 +3,7 @@ name: Deploy CTF Problems
 on:
   push:
     paths:
-      - '*/*'     # 최상위 문제 디렉토리 내부가 바뀌었을 때 실행
+      - '*/*'  # 문제 디렉토리 내 파일이 변경되었을 때 실행
 
 jobs:
   detect-changes:
@@ -11,15 +11,24 @@ jobs:
     outputs:
       folders: ${{ steps.set.outputs.folders }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Detect changed top-level folders
-      id: set
-      run: |
-        CHANGED_FOLDERS=$(git diff --name-only ${{ github.sha }} ${{ github.sha }}^ | awk -F/ '{print $1}' | sort -u)
-        echo "folders=$(echo $CHANGED_FOLDERS | sed 's/ /","/g; s/^/["/; s/$/"]/')" >> $GITHUB_OUTPUT
-        echo "📦 Changed folders: $CHANGED_FOLDERS"
+      - name: Detect changed top-level folders
+        id: set
+        run: |
+          echo "🔍 Detecting changed top-level folders..."
+
+          # 변경된 최상위 디렉토리 추출 (ex: SQLI-Easy)
+          CHANGED=$(git diff --name-only ${{ github.sha }} ${{ github.sha }}^ | awk -F/ '{print $1}' | sort -u)
+
+          if [ -z "$CHANGED" ]; then
+            echo 'folders=[]' >> $GITHUB_OUTPUT
+          else
+            echo "folders=$(echo $CHANGED | sed 's/ /","/g; s/^/["/; s/$/"]/')" >> $GITHUB_OUTPUT
+          fi
+
+          echo "📦 Changed folders: $CHANGED"
 
   deploy:
     needs: detect-changes
@@ -30,31 +39,31 @@ jobs:
         folder: ${{ fromJson(needs.detect-changes.outputs.folders) }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1  # public ECR은 반드시 us-east-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # public ECR은 반드시 us-east-1
 
-    - name: Login to Amazon ECR Public
-      run: |
-        aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+      - name: Login to Amazon Public ECR
+        run: |
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
 
-    - name: Build and push Docker image to ECR
-      run: |
-        IMAGE_NAME=public.ecr.aws/i7t0x0a1/gaurdians/wargames
-        IMAGE_TAG=${{ matrix.folder }}
+      - name: Build and push Docker image to public ECR
+        run: |
+          IMAGE_NAME=public.ecr.aws/i7t0x0a1/gaurdians/wargames
+          IMAGE_TAG=${{ matrix.folder }}
 
-        echo "🚧 Building image $IMAGE_NAME:$IMAGE_TAG"
-        docker build -t $IMAGE_NAME:$IMAGE_TAG ./${{ matrix.folder }}
-        docker push $IMAGE_NAME:$IMAGE_TAG
+          echo "🚧 Building image $IMAGE_NAME:$IMAGE_TAG"
+          docker build -t $IMAGE_NAME:$IMAGE_TAG ./${{ matrix.folder }}
+          docker push $IMAGE_NAME:$IMAGE_TAG
 
-    - name: Upload challenge files to S3 (excluding flag.txt and info.txt)
-      run: |
-        for file in $(find "${{ matrix.folder }}" -type f ! -name 'flag.txt' ! -name 'info.txt'); do
-          aws s3 cp "$file" "s3://s3-guardians-dev/wargame_files/${{ matrix.folder }}/$(basename "$file")"
-        done
+      - name: Upload challenge files to S3 (excluding flag.txt and info.txt)
+        run: |
+          for file in $(find "${{ matrix.folder }}" -type f ! -name 'flag.txt' ! -name 'info.txt'); do
+            aws s3 cp "$file" "s3://s3-guardians-dev/wargame_files/${{ matrix.folder }}/$(basename "$file")"
+          done
