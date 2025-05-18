@@ -3,7 +3,7 @@ name: Deploy CTF Problems
 on:
   push:
     paths:
-      - '*/*'  # 문제 디렉토리 내 파일이 변경되었을 때 실행
+      - '*/*'  # 최상위 문제 디렉토리 내부 파일이 변경되었을 때 실행
 
 jobs:
   detect-changes:
@@ -11,7 +11,7 @@ jobs:
     outputs:
       folders: ${{ steps.set.outputs.folders }}
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Detect changed top-level folders
@@ -19,11 +19,18 @@ jobs:
         run: |
           echo "🔍 Detecting changed top-level folders..."
 
-          # 변경된 최상위 디렉토리 추출 (ex: SQLI-Easy)
-          CHANGED=$(git diff --name-only ${{ github.sha }} ${{ github.sha }}^ | awk -F/ '{print $1}' | sort -u)
+          PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+          CUR_COMMIT=$(git rev-parse HEAD)
+
+          if [ -z "$PREV_COMMIT" ]; then
+            echo "⚠️ No previous commit found. Using current commit only."
+            CHANGED=$(git show --name-only --pretty="" "$CUR_COMMIT" | awk -F/ '{print $1}' | sort -u)
+          else
+            CHANGED=$(git diff --name-only "$PREV_COMMIT" "$CUR_COMMIT" | awk -F/ '{print $1}' | sort -u)
+          fi
 
           if [ -z "$CHANGED" ]; then
-            echo 'folders=[]' >> $GITHUB_OUTPUT
+            echo "folders=[]" >> $GITHUB_OUTPUT
           else
             echo "folders=$(echo $CHANGED | sed 's/ /","/g; s/^/["/; s/$/"]/')" >> $GITHUB_OUTPUT
           fi
@@ -47,13 +54,13 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # public ECR은 반드시 us-east-1
+          aws-region: us-east-1  # public ECR 전용
 
       - name: Login to Amazon Public ECR
         run: |
           aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
 
-      - name: Build and push Docker image to public ECR
+      - name: Build and push Docker image to ECR
         run: |
           IMAGE_NAME=public.ecr.aws/i7t0x0a1/gaurdians/wargames
           IMAGE_TAG=${{ matrix.folder }}
