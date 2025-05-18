@@ -62,11 +62,11 @@ jobs:
   deploy:
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: ${{ needs.detect-changes.outputs.folders != '' && fromJson(needs.detect-changes.outputs.folders).length > 0 }}
+    # ✅ 수정된 조건식: 문자열 비교 기반
+    if: ${{ needs.detect-changes.outputs.folders != '' && needs.detect-changes.outputs.folders != '[]' }}
     strategy:
       matrix:
         folder: ${{ fromJson(needs.detect-changes.outputs.folders) }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
