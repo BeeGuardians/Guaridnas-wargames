@@ -14,13 +14,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Detect changed folders
+    - name: Detect changed top-level folders
       id: set
       run: |
-        echo "🔍 Detecting changed top-level folders..."
-        CHANGED_FOLDERS=$(git diff --name-only ${{ github.sha }} ${{ github.sha }}^ \
-          | awk -F/ '{print $1}' | sort -u)
-        echo "folders=$(echo [$CHANGED_FOLDERS] | sed 's/ /","/g; s/^/[\"/; s/$/\"]/')" >> $GITHUB_OUTPUT
+        CHANGED_FOLDERS=$(git diff --name-only ${{ github.sha }} ${{ github.sha }}^ | awk -F/ '{print $1}' | sort -u)
+        echo "folders=$(echo $CHANGED_FOLDERS | sed 's/ /","/g; s/^/["/; s/$/"]/')" >> $GITHUB_OUTPUT
         echo "📦 Changed folders: $CHANGED_FOLDERS"
 
   deploy:
@@ -32,18 +30,19 @@ jobs:
         folder: ${{ fromJson(needs.detect-changes.outputs.folders) }}
 
     steps:
-    - name: Checkout
+    - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Configure AWS
+    - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ap-northeast-2
+        aws-region: us-east-1  # public ECR은 반드시 us-east-1
 
     - name: Login to Amazon ECR Public
-      run: echo "${{ secrets.AWS_PUBLIC_ECR_AUTH }}" | docker login --username AWS --password-stdin public.ecr.aws
+      run: |
+        aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
 
     - name: Build and push Docker image to ECR
       run: |
@@ -57,5 +56,5 @@ jobs:
     - name: Upload challenge files to S3 (excluding flag.txt and info.txt)
       run: |
         for file in $(find "${{ matrix.folder }}" -type f ! -name 'flag.txt' ! -name 'info.txt'); do
-          aws s3 cp "$file" "s3://your-ctf-bucket/${{ matrix.folder }}/$(basename "$file")"
+          aws s3 cp "$file" "s3://s3-guardians-dev/wargame_files/${{ matrix.folder }}/$(basename "$file")"
         done
