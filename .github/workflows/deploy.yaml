@@ -19,14 +19,13 @@ jobs:
         run: |
           echo "🔍 Detecting changed top-level folders..."
 
-          PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
-          CUR_COMMIT=$(git rev-parse HEAD)
-
-          if [ -z "$PREV_COMMIT" ]; then
-            echo "⚠️ No previous commit. Using current commit only."
-            CHANGED=$(git show --pretty="" --name-only "$CUR_COMMIT" | awk -F/ '{print $1}' | sort -u)
-          else
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            PREV_COMMIT=$(git rev-parse HEAD~1)
+            CUR_COMMIT=$(git rev-parse HEAD)
             CHANGED=$(git diff --name-only "$PREV_COMMIT" "$CUR_COMMIT" | awk -F/ '{print $1}' | sort -u)
+          else
+            echo "⚠️ No previous commit. Using HEAD only."
+            CHANGED=$(git show --pretty="" --name-only HEAD | awk -F/ '{print $1}' | sort -u)
           fi
 
           echo "📦 Changed folders raw:"
@@ -46,7 +45,7 @@ jobs:
   deploy:
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: ${{ needs.detect-changes.outputs.folders != '[]' }}
+    if: ${{ needs.detect-changes.outputs.folders && fromJson(needs.detect-changes.outputs.folders) != [] }}
     strategy:
       matrix:
         folder: ${{ fromJson(needs.detect-changes.outputs.folders) }}
@@ -60,7 +59,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Public ECR 리전
+          aws-region: us-east-1  # ECR public 리전 고정
 
       - name: Login to Amazon Public ECR
         run: |
