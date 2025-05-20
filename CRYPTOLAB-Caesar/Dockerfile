@@ -5,7 +5,6 @@ RUN pip install flask
 WORKDIR /app
 
 COPY app.py .
-COPY flag.txt .
 
 EXPOSE 8000
 
