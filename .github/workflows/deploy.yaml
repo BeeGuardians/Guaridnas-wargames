@@ -45,8 +45,13 @@ jobs:
           echo "$LIST_LINE"
 
           # 쉼표 기준으로 자르고 양쪽 공백 제거
-          MENTIONED=$(echo "$LIST_LINE" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u)
+          MENTIONED=$(echo "$LIST_LINE" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u | xargs)
+
+          echo "📝 Mentioned folders: $MENTIONED"
+
+          # 줄바꿈 없이 안전하게 출력
           echo "mentioned=$MENTIONED" >> "$GITHUB_OUTPUT"
+
 
       - name: Intersect changed and mentioned folders
         id: filter
