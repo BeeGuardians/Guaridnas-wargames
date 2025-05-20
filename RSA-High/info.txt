@@ -1,0 +1,31 @@
+📌 문제 제목
+RSA Lab - Cube Root (High)
+
+🎯 문제 설명
+이 문제는 RSA 암호화에서 공개 지수 e=3을 사용할 때 발생할 수 있는 취약점을 다룹니다.
+
+해당 서버는 RSA 공개키를 사용하여 매우 짧은 평문을 암호화하였습니다.
+이때 암호문은 PKCS#1 패딩 없이 암호화되었으며, 결과는 base64로 인코딩되어 ciphertext.txt에 저장되어 있습니다.
+공개키는 public.pem 파일에서 확인할 수 있습니다.
+
+📂 제공 파일
+- public.pem
+- ciphertext.txt
+
+🧠 난이도
+상 (High)
+
+💡 힌트
+- 평문이 매우 짧고 padding이 없는 RSA 암호문이라면, `cube_root` 공격이 가능합니다.
+- RsaCtfTool 또는 Sage를 사용하여 공격해보세요.
+- 암호문은 base64로 인코딩되어 있으므로, 디코딩 후 사용하세요.
+
+
+git clone https://github.com/Ganapati/RsaCtfTool
+cd RsaCtfTool
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+base64 -d ciphertext.txt > ciphertext.raw
+PYTHONPATH=src python3 -m RsaCtfTool.main --publickey public.pem --attack cube_root --decryptfile ciphertext.raw
