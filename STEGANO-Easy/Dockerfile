@@ -5,7 +5,7 @@ RUN pip install flask
 WORKDIR /app
 
 COPY app.py .
-COPY flag.txt .
+COPY stego.png .
 
 EXPOSE 8000
 
