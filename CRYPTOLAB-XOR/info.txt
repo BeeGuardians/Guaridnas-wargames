@@ -1,0 +1,23 @@
+📌 문제 제목
+Crypto Lab - XOR + Base64 (중급)
+
+🎯 문제 설명
+아래의 암호문은 Base64로 인코딩되어 있으며,
+디코딩하면 단일 바이트 키로 XOR 처리된 바이너리입니다.
+
+이 암호문을 복호화하여 FLAG를 찾으세요.
+
+🧠 난이도
+중
+
+💡 힌트
+- 먼저 Base64 디코딩을 수행하세요.
+- 이후 XOR 키를 찾기 위해 반복문을 사용해보세요.
+
+import base64
+
+cipher = base64.b64decode("BA4DBTk6LTAdIywmHSAjMSd0dh0jMCcdJDcsPw==")
+for k in range(256):
+    result = bytes([b ^ k for b in cipher])
+    if b"FLAG{" in result:
+        print(f"KEY: {k}, Plaintext: {result.decode()}")
