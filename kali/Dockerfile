@@ -19,5 +19,5 @@ RUN git clone https://github.com/tsl0922/ttyd.git && \
     cd / && rm -rf /ttyd  # 빌드 후 소스 정리
 
 # 포트 노출 및 실행
-EXPOSE 7681
-CMD ["ttyd", "--writable", "-p", "7681", "bash"]
+EXPOSE 8000
+CMD ["ttyd", "--writable", "-p", "8000", "bash"]
