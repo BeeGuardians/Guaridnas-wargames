@@ -1,0 +1,1 @@
+FLAG{kali_wargame_master}
