@@ -74,7 +74,8 @@ jobs:
           fi
 
       - name: Show final filtered folders (for debug)
-        run: echo "Folders: ${{ steps.filter.outputs.folders }}"
+        run: |
+          echo "Folders: ${{ steps.filter.outputs.folders }}"
 
   deploy:
     needs: detect-changes
