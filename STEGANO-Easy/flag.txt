@@ -1,0 +1,1 @@
+FLAG{stegano_reveal_success}

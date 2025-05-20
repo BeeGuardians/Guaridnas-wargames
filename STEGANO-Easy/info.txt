@@ -1,0 +1,18 @@
+📌 문제 제목
+Stego Lab - Easy
+
+🎯 문제 설명
+다음 이미지는 평범한 PNG처럼 보이지만, 실제로는 플래그가 숨겨져 있습니다.
+당신의 목표는 이 이미지를 다운로드받아 Kali 리눅스의 도구를 활용해
+숨겨진 FLAG를 찾아내는 것입니다.
+
+🧠 난이도
+하 (Easy)
+
+💡 예시 풀이 흐름
+
+```bash
+strings stego.png | grep FLAG
+tail -n 10 stego.png
+```
+※ PNG 파일 끝에 FLAG가 텍스트 형태로 은닉되어 있습니다.

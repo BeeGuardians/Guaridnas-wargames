@@ -1,0 +1,1 @@
+FLAG{ssti_execution_success}
