@@ -28,7 +28,9 @@ jobs:
             RAW=$(git show --pretty="" --name-only HEAD)
           fi
 
-          CHANGED=$(echo "$RAW" | awk -F/ '{print $1}' | sort -u)
+          CHANGED=$(echo "$RAW" | awk -F/ '{print $1}' | sort -u | xargs)
+
+          # 출력은 줄바꿈 없이
           echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: Get mentioned folders in commit description (comma-separated)
