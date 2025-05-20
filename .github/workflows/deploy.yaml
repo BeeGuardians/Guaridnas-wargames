@@ -9,12 +9,12 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      folders: ${{ steps.detect.outputs.folders }}
+      folders: ${{ steps.filter.outputs.folders }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Detect changed top-level folders
+      - name: Get changed top-level folders
         id: detect
         run: |
           echo "🔍 Detecting changed top-level folders..."
@@ -29,40 +29,56 @@ jobs:
           fi
 
           CHANGED=$(echo "$RAW" | awk -F/ '{print $1}' | sort -u)
+          echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
 
-          echo "📦 Changed folders raw:"
-          echo "$CHANGED"
+      - name: Get mentioned folders in commit description (comma-separated)
+        id: commitmsg
+        run: |
+          DESCRIPTION=$(git log -1 --pretty=%B)
 
-          # 제외할 항목 목록
-          EXCLUDED=".github .gitignore README.md LICENSE README README.md~"
+          # 줄바꿈 이후 전체를 쉼표로 파싱
+          LIST_LINE=$(echo "$DESCRIPTION" | tail -n +2 | tr -d '\n')
 
-          FILTERED=""
+          echo "📩 Commit description list line:"
+          echo "$LIST_LINE"
+
+          # 쉼표 기준으로 자르고 양쪽 공백 제거
+          MENTIONED=$(echo "$LIST_LINE" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u)
+          echo "mentioned=$MENTIONED" >> "$GITHUB_OUTPUT"
+
+      - name: Intersect changed and mentioned folders
+        id: filter
+        run: |
+          CHANGED="${{ steps.detect.outputs.changed }}"
+          MENTIONED="${{ steps.commitmsg.outputs.mentioned }}"
+
+          echo "📦 Changed folders: $CHANGED"
+          echo "📝 Mentioned folders: $MENTIONED"
+
+          INTERSECT=""
           for folder in $CHANGED; do
-            if ! echo "$EXCLUDED" | grep -qw "$folder"; then
-              FILTERED="$FILTERED $folder"
+            if echo "$MENTIONED" | grep -qw "$folder"; then
+              INTERSECT="$INTERSECT $folder"
             fi
           done
 
-          FILTERED=$(echo "$FILTERED" | xargs -n1 | sort -u)
+          INTERSECT=$(echo "$INTERSECT" | xargs -n1 | sort -u)
+          echo "✅ Final filtered folders:"
+          echo "$INTERSECT"
 
-          echo "✅ Filtered challenge folders:"
-          echo "$FILTERED"
-
-          if [ -z "$FILTERED" ]; then
+          if [ -z "$INTERSECT" ]; then
             echo 'folders=[]' | tee -a "$GITHUB_OUTPUT"
           else
-            JSON_ARRAY=$(echo "$FILTERED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            JSON_ARRAY=$(echo "$INTERSECT" | jq -R -s -c 'split("\n") | map(select(length > 0))')
             echo "folders=$JSON_ARRAY" | tee -a "$GITHUB_OUTPUT"
           fi
 
-      - name: Show detected folders (for debug)
-        run: |
-          echo "Folders: ${{ steps.detect.outputs.folders }}"
+      - name: Show final filtered folders (for debug)
+        run: echo "Folders: ${{ steps.filter.outputs.folders }}"
 
   deploy:
     needs: detect-changes
     runs-on: ubuntu-latest
-    # ✅ 수정된 조건식: 문자열 비교 기반
     if: ${{ needs.detect-changes.outputs.folders != '' && needs.detect-changes.outputs.folders != '[]' }}
     strategy:
       matrix:
@@ -92,8 +108,24 @@ jobs:
           docker build -t $IMAGE_NAME:$IMAGE_TAG ./${{ matrix.folder }}
           docker push $IMAGE_NAME:$IMAGE_TAG
 
-      - name: Upload challenge files to S3 (excluding flag.txt and info.txt)
+      - name: Upload ZIP archive to S3 (based on .upload-include)
         run: |
-          for file in $(find "${{ matrix.folder }}" -type f ! -name 'flag.txt' ! -name 'info.txt'); do
-            aws s3 cp "$file" "s3://s3-guardians-dev/wargame_files/${{ matrix.folder }}/$(basename "$file")"
-          done
+          FOLDER="${{ matrix.folder }}"
+          ZIP_NAME="${FOLDER}.zip"
+
+          cd "$FOLDER"
+
+          if [ ! -f ".upload-include" ]; then
+            echo "❌ .upload-include not found in $FOLDER. Skipping..."
+            exit 1
+          fi
+
+          echo "📦 Creating zip with files listed in .upload-include..."
+          INCLUDE_FILES=$(cat .upload-include | xargs)
+
+          zip -r "../$ZIP_NAME" $INCLUDE_FILES
+
+          cd ..
+
+          echo "🚀 Uploading $ZIP_NAME to S3..."
+          aws s3 cp "$ZIP_NAME" "s3://s3-guardians-dev/wargame_zips/$ZIP_NAME"
