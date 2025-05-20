@@ -1,0 +1,1 @@
+FLAG{format_string_leak_success}
