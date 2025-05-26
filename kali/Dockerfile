@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y \
 # ttyd 소스 클론 및 빌드
 RUN git clone https://github.com/tsl0922/ttyd.git && \
     cd ttyd && mkdir build && cd build && \
-    cmake -DDEFAULT_PORT=8000 .. && make && make install \
-    cd / && rm -rf /ttyd  # 빌드 후 소스 정리
+    cmake -DDEFAULT_PORT=8000 .. && make && make install && \
+    cd / && rm -rf /ttyd
 
 # 포트 노출 및 실행
 EXPOSE 8000
